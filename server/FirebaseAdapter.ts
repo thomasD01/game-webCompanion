@@ -1,11 +1,11 @@
-import { addDoc, collection, doc, getDocs, getDoc, Firestore, limit, query, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, Firestore, limit, query, updateDoc, where } from "firebase/firestore";
 import { Account, Awaitable } from "next-auth";
 import { Adapter, AdapterSession, AdapterUser, VerificationToken } from "next-auth/adapters";
 
 export default function FirebaseAdapter(client: Firestore, options = {}):Adapter {
   return{
     createUser: function (user: Omit<AdapterUser, "id">): Awaitable<AdapterUser>{
-      return new Promise<AdapterUser>(async function(reject, resolve){
+      return new Promise<AdapterUser>(async function(resolve, reject){
         const userRef = await addDoc(collection(client, 'Users'), user);
         const userSnapshot = await getDoc(userRef);
         resolve(userSnapshot.data() as AdapterUser);
@@ -92,7 +92,7 @@ export default function FirebaseAdapter(client: Firestore, options = {}):Adapter
               limit(1)
             )
           )
-          const userSnapshot = sessionRef.docs[0];
+          const userSnapshot = userRef.docs[0];
           if(userSnapshot.exists()){
             const user = userSnapshot.data() as AdapterUser;
             resolve({
@@ -116,7 +116,14 @@ export default function FirebaseAdapter(client: Firestore, options = {}):Adapter
     },
     deleteSession: function (sessionToken: string): Promise<void> | Awaitable<AdapterSession | null | undefined> {
       return new Promise<AdapterSession | null | undefined>(async function(resolve, reject){
-        
+        const sessionRef = await getDocs(
+          query(
+            collection(client, 'Sessions'),
+            where('sessionToken','==',sessionToken),
+            limit(1)
+          )
+        )
+        await deleteDoc(sessionRef.docs[0].ref);
       });
     },
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +131,7 @@ export default function FirebaseAdapter(client: Firestore, options = {}):Adapter
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     createVerificationToken: function(verificationToken: VerificationToken): Awaitable<VerificationToken | null | undefined> {
       return new Promise<VerificationToken | null | undefined>(function(resolve, reject){
-
+        
       });
     },
     useVerificationToken: function(params: { identifier: string; token: string;}): Awaitable<VerificationToken | null> {
